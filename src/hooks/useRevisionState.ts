@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef } from 'react';
-import { REVISION_MOCK, CYCLE_DAYS, nextReviewDate, srsMessage, type RevisionItem } from '@/data/revisionMock';
+import { supabase } from '@/lib/supabase';
+import { CYCLE_DAYS, nextReviewDate, srsMessage, type RevisionItem } from '@/data/revisionMock';
 
 export type RevisionPhase = 'recall' | 'revealed';
 
@@ -11,6 +12,7 @@ export type RevisionState = {
   srsMsg: string;
   saving: boolean;
   done: boolean;
+  error: string | null;
 };
 
 export type RevisionActions = {
@@ -20,15 +22,18 @@ export type RevisionActions = {
   progress: number; // 0-100
 };
 
-export function useRevisionState(): { state: RevisionState; actions: RevisionActions } {
-  // Swap REVISION_MOCK for Supabase fetch here
-  const [items]        = useState<RevisionItem[]>(REVISION_MOCK);
+export function useRevisionState(
+  initialItems: RevisionItem[],
+  userId: string,
+): { state: RevisionState; actions: RevisionActions } {
+  const [items]                         = useState<RevisionItem[]>(initialItems);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [phase, setPhase]               = useState<RevisionPhase>('recall');
   const [showTranslit, setShowTranslit] = useState(false);
   const [srsMsg, setSrsMsg]             = useState('');
   const [saving, setSaving]             = useState(false);
   const [done, setDone]                 = useState(false);
+  const [error, setError]               = useState<string | null>(null);
 
   const answerGuardRef = useRef(false);
 
@@ -40,22 +45,38 @@ export function useRevisionState(): { state: RevisionState; actions: RevisionAct
     setShowTranslit(v => !v);
   }, []);
 
-  const answer = useCallback((remembered: boolean) => {
+  const answer = useCallback(async (remembered: boolean) => {
     if (answerGuardRef.current || saving) return;
     answerGuardRef.current = true;
     setSaving(true);
 
     const item       = items[currentIndex];
     const curCycle   = item.review_cycle ?? 1;
+    // SRS — identique web app exactement :
     const nextCycle  = remembered ? Math.min(curCycle + 1, CYCLE_DAYS.length - 1) : 1;
-    const _nextDate  = nextReviewDate(nextCycle); // used when Supabase is wired
+    const nextReview = nextReviewDate(nextCycle);
+    const mastered   = remembered && curCycle >= CYCLE_DAYS.length - 1;
     const msg        = srsMessage(remembered, curCycle);
 
+    // Persistance Supabase — identique web app
+    const { error: updateErr } = await supabase
+      .from('review_items')
+      .update({
+        review_cycle: nextCycle,
+        next_review:  nextReview,
+        mastered,
+        updated_at:   new Date().toISOString(),
+      })
+      .eq('id', item.id);
+
+    if (updateErr) {
+      setError(updateErr.message ?? 'Erreur lors de la sauvegarde. Réessaie.');
+      setSaving(false);
+      answerGuardRef.current = false;
+      return;
+    }
+
     setSrsMsg(msg);
-
-    // TODO (Supabase): update review_items set review_cycle, next_review, mastered where id = item.id
-    // await supabase.from('review_items').update({ review_cycle: nextCycle, next_review: _nextDate, ... }).eq('id', item.id)
-
     setSaving(false);
 
     const isLast = currentIndex >= items.length - 1;
@@ -74,22 +95,14 @@ export function useRevisionState(): { state: RevisionState; actions: RevisionAct
         answerGuardRef.current = false;
       }, 500);
     }
-  }, [currentIndex, items, saving]);
+  }, [currentIndex, items, saving, userId]);
 
   const progress = items.length > 0
     ? ((currentIndex + (phase === 'revealed' ? 1 : 0)) / items.length) * 100
     : 0;
 
   return {
-    state: {
-      items,
-      currentIndex,
-      phase,
-      showTranslit,
-      srsMsg,
-      saving,
-      done,
-    },
+    state: { items, currentIndex, phase, showTranslit, srsMsg, saving, done, error },
     actions: { reveal, toggleTranslit, answer, progress },
   };
 }
