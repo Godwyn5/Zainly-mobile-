@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, FlatList, StyleSheet } from 'react-native';
+import { View, Text, FlatList, StyleSheet, ActivityIndicator, Pressable } from 'react-native';
 import Animated, { FadeInDown, Easing } from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -8,16 +8,53 @@ import { Fonts, FontSizes } from '@/constants/typography';
 import { AnimatedSection } from '@/components/ui/AnimatedSection';
 import { SurahGroup } from '@/components/hifz/SurahGroup';
 import { HifzEmptyState } from '@/components/hifz/HifzEmptyState';
+import { useHifzLoader } from '@/hooks/useHifzLoader';
 import { useHifzState } from '@/hooks/useHifzState';
+import type { EnrichedReviewItem } from '@/hooks/useHifzLoader';
 
 export default function HifzScreen() {
+  const insets  = useSafeAreaInsets();
+  const { result, reload } = useHifzLoader();
+
+  // ── Loading ────────────────────────────────────────────────────────────────
+  if (result.status === 'loading') {
+    return (
+      <View style={[styles.center, { paddingTop: insets.top }]}>
+        <ActivityIndicator color={Colors.brand.dark} size="large" />
+        <Text style={styles.loadingText}>Chargement de ton Hifz...</Text>
+      </View>
+    );
+  }
+
+  // ── Error ──────────────────────────────────────────────────────────────────
+  if (result.status === 'error') {
+    return (
+      <View style={[styles.center, { paddingTop: insets.top }]}>
+        <Text style={styles.errorIcon}>⚠️</Text>
+        <Text style={styles.errorTitle}>Erreur</Text>
+        <Text style={styles.errorSub}>{result.message}</Text>
+        <Pressable onPress={reload} style={styles.errorBtn}>
+          <Text style={styles.errorBtnText}>Réessayer</Text>
+        </Pressable>
+      </View>
+    );
+  }
+
+  // ── Empty handled inside HifzInner ─────────────────────────────────────────
+  return <HifzInner items={result.status === 'ready' ? result.items : []} />;
+}
+
+// ── Inner component — mounts only when loader is ready ────────────────────────
+
+function HifzInner({ items }: { items: EnrichedReviewItem[] }) {
   const router  = useRouter();
   const insets  = useSafeAreaInsets();
   const {
     groups, totalAyats, totalValidated, totalReinforce,
     expandedSurah, toggleExpanded,
-    isEmpty,
-  } = useHifzState();
+  } = useHifzState(items);
+
+  const isEmpty = items.length === 0;
 
   return (
     <View style={[styles.screen, { paddingTop: insets.top }]}>
@@ -164,5 +201,51 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.dmSans,
     fontSize: FontSizes.base,
     color: Colors.text.muted,
+  },
+
+  // Loading / error states
+  center: {
+    flex: 1,
+    backgroundColor: Colors.ui.pageBg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 32,
+    gap: 12,
+  },
+  loadingText: {
+    fontFamily: Fonts.playfairItalic,
+    fontSize: FontSizes.base,
+    color: Colors.text.secondary,
+    marginTop: 12,
+  },
+  errorIcon: {
+    fontSize: 48,
+    lineHeight: 60,
+  },
+  errorTitle: {
+    fontFamily: Fonts.playfair,
+    fontSize: FontSizes.xl,
+    fontWeight: '600',
+    color: Colors.brand.dark,
+    textAlign: 'center',
+  },
+  errorSub: {
+    fontFamily: Fonts.dmSans,
+    fontSize: FontSizes.base,
+    color: Colors.text.secondary,
+    textAlign: 'center',
+  },
+  errorBtn: {
+    marginTop: 8,
+    backgroundColor: Colors.brand.dark,
+    paddingVertical: 14,
+    paddingHorizontal: 32,
+    borderRadius: 14,
+  },
+  errorBtnText: {
+    fontFamily: Fonts.playfair,
+    fontSize: FontSizes.base,
+    fontWeight: '600',
+    color: '#fff',
   },
 });

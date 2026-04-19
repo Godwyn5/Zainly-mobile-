@@ -2,11 +2,10 @@ import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Colors } from '@/constants/colors';
 import { Fonts, FontSizes } from '@/constants/typography';
-import type { ReviewItem } from '@/types';
-import { getAyatContent } from '@/data/ayatContentMock';
+import type { EnrichedReviewItem } from '@/hooks/useHifzLoader';
 
 type Props = {
-  item: ReviewItem;
+  item: EnrichedReviewItem;
   isLast: boolean;
 };
 
@@ -17,8 +16,7 @@ const STATUS_CONFIG = {
 } as const;
 
 export function AyatStatusRow({ item, isLast }: Props) {
-  const cfg     = STATUS_CONFIG[item.final_test_status] ?? STATUS_CONFIG.pending;
-  const content = getAyatContent(item.surah_number, item.ayah);
+  const cfg = STATUS_CONFIG[item.final_test_status] ?? STATUS_CONFIG.pending;
 
   return (
     <View style={[styles.row, !isLast && styles.rowBorder]}>
@@ -31,18 +29,18 @@ export function AyatStatusRow({ item, isLast }: Props) {
       </View>
 
       {/* Texte arabe */}
-      {content?.arabic ? (
-        <Text style={styles.arabic}>{content.arabic}</Text>
+      {item.arabicText ? (
+        <Text style={styles.arabic}>{item.arabicText}</Text>
       ) : null}
 
       {/* Translittération */}
-      {content?.transliteration ? (
-        <Text style={styles.translit}>{content.transliteration}</Text>
+      {item.transliteration ? (
+        <Text style={styles.translit}>{item.transliteration}</Text>
       ) : null}
 
       {/* Traduction */}
-      {content?.translation ? (
-        <Text style={styles.translation}>{content.translation}</Text>
+      {item.translation ? (
+        <Text style={styles.translation}>{item.translation}</Text>
       ) : null}
     </View>
   );
