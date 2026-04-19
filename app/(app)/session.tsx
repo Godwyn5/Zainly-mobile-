@@ -1,8 +1,12 @@
 import React from 'react';
-import { View, StyleSheet } from 'react-native';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { View, Text, ActivityIndicator, Pressable, StyleSheet } from 'react-native';
+import { useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '@/constants/colors';
+import { Fonts, FontSizes } from '@/constants/typography';
+import { useSessionLoader } from '@/hooks/useSessionLoader';
 import { useSessionState } from '@/hooks/useSessionState';
+import type { SessionContext } from '@/hooks/useSessionState';
 import type { SessionState } from '@/types';
 import { SessionHeader } from '@/components/session/SessionHeader';
 import { AyatCard } from '@/components/session/AyatCard';
@@ -20,25 +24,91 @@ const FINAL_PHASES = new Set([
 ]);
 
 export default function SessionScreen() {
+  const router  = useRouter();
+  const insets  = useSafeAreaInsets();
+  const { result } = useSessionLoader();
+
+  // ── Loading ────────────────────────────────────────────────────────────────
+  if (result.status === 'loading') {
+    return (
+      <View style={[styles.center, { paddingTop: insets.top }]}>
+        <ActivityIndicator color={Colors.brand.dark} size="large" />
+        <Text style={styles.loadingText}>Préparation de ta session...</Text>
+      </View>
+    );
+  }
+
+  // ── Session already done today ─────────────────────────────────────────────
+  if (result.status === 'session_done_today') {
+    return (
+      <View style={[styles.center, { paddingTop: insets.top }]}>
+        <Text style={styles.doneIcon}>✓</Text>
+        <Text style={styles.doneTitle}>Session du jour accomplie.</Text>
+        <Text style={styles.doneSub}>Reviens demain إن شاء الله</Text>
+        <Pressable onPress={() => router.replace('/(app)/(tabs)/today')} style={styles.btn}>
+          <Text style={styles.btnText}>Retour à l'accueil</Text>
+        </Pressable>
+      </View>
+    );
+  }
+
+  // ── Quran complete ─────────────────────────────────────────────────────────
+  if (result.status === 'quran_complete') {
+    return (
+      <View style={[styles.center, { paddingTop: insets.top }]}>
+        <Text style={styles.doneIcon}>🎉</Text>
+        <Text style={styles.doneTitle}>Coran mémorisé.</Text>
+        <Text style={styles.doneSub}>Qu'Allah accepte ton effort.</Text>
+        <Pressable onPress={() => router.replace('/(app)/(tabs)/today')} style={styles.btn}>
+          <Text style={styles.btnText}>Retour à l'accueil</Text>
+        </Pressable>
+      </View>
+    );
+  }
+
+  // ── Error ──────────────────────────────────────────────────────────────────
+  if (result.status === 'error') {
+    return (
+      <View style={[styles.center, { paddingTop: insets.top }]}>
+        <Text style={styles.errorText}>{result.message}</Text>
+        <Pressable onPress={() => router.replace('/(app)/(tabs)/today')} style={styles.btn}>
+          <Text style={styles.btnText}>Retour à l'accueil</Text>
+        </Pressable>
+      </View>
+    );
+  }
+
+  // ── Ready — build override + context from loader result ───────────────────
+  const paramsOverride: Partial<SessionState> = {
+    surahNumber: result.surahNumber,
+    surahName:   result.surahName,
+    startAyah:   result.ayats[0]?.id,
+    endAyah:     result.ayats[result.ayats.length - 1]?.id,
+    ayats:       result.ayats,
+  };
+
+  const sessionCtx: SessionContext = {
+    userId:           result.userId,
+    surahNumber:      result.surahNumber,
+    savedAyah:        result.savedAyah,
+    surahTotalVerses: result.surahTotalVerses,
+    progress:         result.progress,
+  };
+
+  return <SessionInner paramsOverride={paramsOverride} sessionCtx={sessionCtx} />;
+}
+
+// ── Inner component — only mounts when data is ready ─────────────────────────
+
+function SessionInner({
+  paramsOverride,
+  sessionCtx,
+}: {
+  paramsOverride: Partial<SessionState>;
+  sessionCtx: SessionContext;
+}) {
   const router = useRouter();
-  const params = useLocalSearchParams<{
-    surahNumber?: string;
-    surahName?: string;
-    startAyah?: string;
-    endAyah?: string;
-  }>();
-
-  const paramsOverride: Partial<SessionState> | undefined =
-    params.surahName
-      ? {
-          surahNumber: params.surahNumber ? Number(params.surahNumber) : undefined,
-          surahName: params.surahName,
-          startAyah: params.startAyah ? Number(params.startAyah) : undefined,
-          endAyah: params.endAyah ? Number(params.endAyah) : undefined,
-        }
-      : undefined;
-
-  const { state, actions } = useSessionState(paramsOverride);
+  const { state, actions } = useSessionState(paramsOverride, sessionCtx);
 
   const {
     ayats,
@@ -75,8 +145,8 @@ export default function SessionScreen() {
         onContinueAfterReveal={actions.goToSincerity}
         onFinalSuccess={actions.handleFinalSuccess}
         onFinalReinforce={actions.handleFinalReinforce}
-        onFinish={(validated) => {
-          actions.finish(validated);
+        onFinish={async (validated) => {
+          await actions.finish(validated);
           router.replace({
             pathname: '/(app)/done',
             params: { result: validated ? 'validated' : 'reinforced' },
@@ -146,5 +216,58 @@ const styles = StyleSheet.create({
     flex: 1,
     margin: 16,
     gap: 12,
+  },
+
+  // Loading / error / done states
+  center: {
+    flex: 1,
+    backgroundColor: Colors.ui.pageBg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 32,
+    gap: 12,
+  },
+  loadingText: {
+    fontFamily: Fonts.playfairItalic,
+    fontSize: FontSizes.base,
+    color: Colors.text.secondary,
+    marginTop: 12,
+  },
+  doneIcon: {
+    fontSize: 56,
+    lineHeight: 72,
+    textAlign: 'center',
+  },
+  doneTitle: {
+    fontFamily: Fonts.playfair,
+    fontSize: FontSizes.xl,
+    fontWeight: '600',
+    color: Colors.brand.dark,
+    textAlign: 'center',
+  },
+  doneSub: {
+    fontFamily: Fonts.dmSans,
+    fontSize: FontSizes.base,
+    color: Colors.text.secondary,
+    textAlign: 'center',
+  },
+  errorText: {
+    fontFamily: Fonts.dmSans,
+    fontSize: FontSizes.base,
+    color: Colors.text.secondary,
+    textAlign: 'center',
+  },
+  btn: {
+    marginTop: 8,
+    backgroundColor: Colors.brand.dark,
+    paddingVertical: 14,
+    paddingHorizontal: 32,
+    borderRadius: 14,
+  },
+  btnText: {
+    fontFamily: Fonts.playfair,
+    fontSize: FontSizes.base,
+    fontWeight: '600',
+    color: '#fff',
   },
 });
