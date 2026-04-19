@@ -3,7 +3,9 @@ import { Stack, useRouter, usePathname } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { StyleSheet } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '@/hooks/useAuth';
+import { STORAGE_KEYS } from '@/lib/storageKeys';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -22,7 +24,10 @@ export default function RootLayout() {
     if (!session && !inAuthGroup) {
       router.replace('/(auth)/login');
     } else if (session && inAuthGroup) {
-      router.replace('/(app)/(tabs)/today');
+      // Check local flag — replaced by Supabase plan check once wired
+      AsyncStorage.getItem(STORAGE_KEYS.ONBOARDING_DONE).then(done => {
+        router.replace(done === 'true' ? '/(app)/(tabs)/today' : '/(app)/onboarding');
+      });
     }
     // session + !inAuthGroup → already in app, do nothing
     // !session + inAuthGroup → already on login, do nothing
