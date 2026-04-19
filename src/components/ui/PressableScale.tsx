@@ -11,11 +11,12 @@ type Props = {
   onPress?: () => void;
   style?: StyleProp<ViewStyle>;
   children: React.ReactNode;
+  disabled?: boolean;
 };
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
-export function PressableScale({ onPress, style, children }: Props) {
+export function PressableScale({ onPress, style, children, disabled }: Props) {
   const scale = useSharedValue(1);
 
   const animatedStyle = useAnimatedStyle(() => ({
@@ -37,6 +38,7 @@ export function PressableScale({ onPress, style, children }: Props) {
         });
       }}
       onPress={onPress}
+      disabled={disabled}
       style={[animatedStyle, style]}
     >
       {children}
