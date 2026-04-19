@@ -32,12 +32,13 @@ export type SessionHook = {
   actions: SessionActions;
 };
 
-function freshState(): SessionState {
-  return { ...sessionMock, phase: 'listen', currentIndex: 0, listenCount: 0, saving: false, error: null };
+function freshState(override?: Partial<SessionState>): SessionState {
+  return { ...sessionMock, phase: 'listen', currentIndex: 0, listenCount: 0, saving: false, error: null, ...override };
 }
 
-export function useSessionState(): SessionHook {
-  const [state, setState] = useState<SessionState>(freshState);
+export function useSessionState(initialOverride?: Partial<SessionState>): SessionHook {
+  const overrideRef = useRef(initialOverride);
+  const [state, setState] = useState<SessionState>(() => freshState(initialOverride));
   const [showRevealAnswer, setShowRevealAnswer] = useState(false);
   const [successMsg, setSuccessMsg] = useState('Bien ✓');
   const [showSuccess, setShowSuccess] = useState(false);
@@ -109,7 +110,7 @@ export function useSessionState(): SessionHook {
   }, []);
 
   const retry = useCallback(() => {
-    setState(freshState());
+    setState(freshState(overrideRef.current));
     setShowRevealAnswer(false);
     setRetryMsg(false);
     setShowSuccess(false);

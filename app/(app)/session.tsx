@@ -1,8 +1,9 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Colors } from '@/constants/colors';
 import { useSessionState } from '@/hooks/useSessionState';
+import type { SessionState } from '@/types';
 import { SessionHeader } from '@/components/session/SessionHeader';
 import { AyatCard } from '@/components/session/AyatCard';
 import { ListenButton } from '@/components/session/ListenButton';
@@ -20,7 +21,24 @@ const FINAL_PHASES = new Set([
 
 export default function SessionScreen() {
   const router = useRouter();
-  const { state, actions } = useSessionState();
+  const params = useLocalSearchParams<{
+    surahNumber?: string;
+    surahName?: string;
+    startAyah?: string;
+    endAyah?: string;
+  }>();
+
+  const paramsOverride: Partial<SessionState> | undefined =
+    params.surahName
+      ? {
+          surahNumber: params.surahNumber ? Number(params.surahNumber) : undefined,
+          surahName: params.surahName,
+          startAyah: params.startAyah ? Number(params.startAyah) : undefined,
+          endAyah: params.endAyah ? Number(params.endAyah) : undefined,
+        }
+      : undefined;
+
+  const { state, actions } = useSessionState(paramsOverride);
 
   const {
     ayats,

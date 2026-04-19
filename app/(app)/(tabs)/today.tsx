@@ -1,5 +1,6 @@
 import React from 'react';
 import { ScrollView, View, Text, StyleSheet } from 'react-native';
+import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '@/constants/colors';
 import { Fonts, FontSizes } from '@/constants/typography';
@@ -11,8 +12,21 @@ import { ProgressBlock } from '@/components/today/ProgressBlock';
 import { todayMock } from '@/data/todayMock';
 
 export default function TodayScreen() {
-  const insets = useSafeAreaInsets();
+  const insets  = useSafeAreaInsets();
+  const router  = useRouter();
   const { date, streak, revisionCount, memorizationCard, revisions } = todayMock;
+
+  function handleStartSession() {
+    router.push({
+      pathname: '/(app)/session',
+      params: {
+        surahNumber: String(memorizationCard.surahNumber),
+        surahName: memorizationCard.surahName,
+        startAyah: String(memorizationCard.ayatRange[0]),
+        endAyah: String(memorizationCard.ayatRange[1]),
+      },
+    });
+  }
 
   return (
     <ScrollView
@@ -30,7 +44,7 @@ export default function TodayScreen() {
       <View style={styles.gap24} />
 
       <AnimatedSection delay={80}>
-        <MemorizationCard data={memorizationCard} />
+        <MemorizationCard data={memorizationCard} onStart={handleStartSession} />
       </AnimatedSection>
 
       <View style={styles.gap32} />
