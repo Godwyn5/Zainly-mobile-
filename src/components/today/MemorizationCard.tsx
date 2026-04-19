@@ -8,10 +8,11 @@ import type { MemorizationCard as MemorizationCardType } from '@/data/todayMock'
 
 type Props = {
   data: MemorizationCardType;
+  sessionDone?: boolean;
   onStart?: () => void;
 };
 
-export function MemorizationCard({ data, onStart }: Props) {
+export function MemorizationCard({ data, sessionDone = false, onStart }: Props) {
   const { surahName, surahNameAr, ayatRange, estimatedMinutes } = data;
 
   return (
@@ -33,9 +34,15 @@ export function MemorizationCard({ data, onStart }: Props) {
         <Text style={styles.arabicName}>{surahNameAr}</Text>
       </View>
 
-      <PressableScale onPress={onStart} style={styles.ctaButton}>
-        <Text style={styles.ctaText}>Commencer la session</Text>
-      </PressableScale>
+      {sessionDone ? (
+        <View style={styles.doneBadge}>
+          <Text style={styles.doneText}>Session du jour complétée ✓</Text>
+        </View>
+      ) : (
+        <PressableScale onPress={onStart} style={styles.ctaButton}>
+          <Text style={styles.ctaText}>Commencer la session</Text>
+        </PressableScale>
+      )}
     </Card>
   );
 }
@@ -106,6 +113,19 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.dmSansBold,
     fontSize: FontSizes.base,
     color: Colors.brand.dark,
+    letterSpacing: 0.2,
+  },
+  doneBadge: {
+    width: '100%',
+    paddingVertical: 16,
+    borderRadius: 14,
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.08)',
+  },
+  doneText: {
+    fontFamily: Fonts.dmSansMedium,
+    fontSize: FontSizes.base,
+    color: 'rgba(255,255,255,0.75)',
     letterSpacing: 0.2,
   },
 });
