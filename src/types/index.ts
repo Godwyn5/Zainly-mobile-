@@ -38,6 +38,7 @@ export type SessionPhase =
   | 'listen'
   | 'test'
   | 'reveal'
+  | 'validated'
   | 'final-intro'
   | 'final-recitation'
   | 'final-sincerity'
