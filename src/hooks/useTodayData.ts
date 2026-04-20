@@ -43,6 +43,8 @@ export type TodayScreenData = {
   sessionDone: boolean;
   memorizationCard: MemorizationCard;
   revisions: RevisionItem[];
+  recoveryMode: boolean;        // true si inactif >= 5 jours — identique web app
+  daysSinceLastSession: number; // nombre exact de jours pour l'affichage
 };
 
 // ─── Hook ─────────────────────────────────────────────────────────────────────
@@ -100,6 +102,19 @@ export function useTodayData() {
       const streak      = (progress.streak as number) ?? 0;
       const sessionDone = (progress.last_session_date as string) === today;
 
+      // Recovery mode — identique web app dashboard.js lines 251-257
+      // Condition : inactif >= 5 jours depuis la dernière session
+      let recoveryMode         = false;
+      let daysSinceLastSession = 0;
+      const lastSession = progress.last_session_date as string | null;
+      if (lastSession) {
+        const todayDate = new Date();
+        todayDate.setHours(0, 0, 0, 0);
+        const lastDate = new Date(lastSession + 'T00:00:00');
+        daysSinceLastSession = Math.floor((todayDate.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24));
+        if (daysSinceLastSession >= 5) recoveryMode = true;
+      }
+
       // 5. Révisions du jour — groupées par sourate pour l'affichage
       const reviews = reviewData ?? [];
       const revisionCount = reviews.length;
@@ -150,6 +165,8 @@ export function useTodayData() {
           sessionDone,
           memorizationCard,
           revisions,
+          recoveryMode,
+          daysSinceLastSession,
         },
       });
     } catch (err: unknown) {

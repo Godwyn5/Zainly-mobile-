@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { ScrollView, View, Text, ActivityIndicator, Pressable, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -53,7 +53,8 @@ export default function TodayScreen() {
   }
 
   // ── Ready ─────────────────────────────────────────────────────────────────
-  const { date, streak, revisionCount, sessionDone, memorizationCard, revisions } = state.data;
+  const { date, streak, revisionCount, sessionDone, memorizationCard, revisions, recoveryMode, daysSinceLastSession } = state.data;
+  const [recoveryDismissed, setRecoveryDismissed] = useState(false);
 
   function handleStartSession() {
     router.push({
@@ -85,6 +86,33 @@ export default function TodayScreen() {
       </AnimatedSection>
 
       <View style={styles.gap24} />
+
+      {/* ── RECOVERY BANNER — identique web app dashboard.js ── */}
+      {recoveryMode && !recoveryDismissed && (
+        <AnimatedSection delay={60}>
+          <View style={styles.recoveryCard}>
+            <Text style={styles.recoveryIcon}>⚠️</Text>
+            <Text style={styles.recoveryTitle}>Content de te revoir.</Text>
+            <Text style={styles.recoveryDesc}>
+              Tu n'as pas ouvert Zainly depuis {daysSinceLastSession} jour{daysSinceLastSession > 1 ? 's' : ''}. Commence par revoir tes ayats pour reprendre proprement.
+            </Text>
+            <Pressable
+              onPress={handleStartRevision}
+              style={({ pressed }) => [styles.recoveryPrimaryBtn, pressed && { opacity: 0.8 }]}
+            >
+              <Text style={styles.recoveryPrimaryBtnText}>Réviser mes ayats →</Text>
+            </Pressable>
+            <Pressable
+              onPress={() => setRecoveryDismissed(true)}
+              style={styles.recoveryDismissBtn}
+              hitSlop={8}
+            >
+              <Text style={styles.recoveryDismissText}>Continuer quand même</Text>
+            </Pressable>
+          </View>
+          <View style={styles.gap24} />
+        </AnimatedSection>
+      )}
 
       <AnimatedSection delay={80}>
         <MemorizationCard data={memorizationCard} sessionDone={sessionDone} onStart={handleStartSession} />
@@ -187,5 +215,56 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.dmSansMedium,
     fontSize: FontSizes.sm,
     color: Colors.brand.gold,
+  },
+
+  // Recovery banner — identique web app
+  recoveryCard: {
+    borderWidth: 1.5,
+    borderColor: Colors.brand.gold,
+    borderRadius: 20,
+    backgroundColor: 'rgba(184,150,46,0.06)',
+    padding: 24,
+    gap: 12,
+    alignItems: 'center',
+  },
+  recoveryIcon: {
+    fontSize: 28,
+  },
+  recoveryTitle: {
+    fontFamily: Fonts.playfair,
+    fontSize: FontSizes.xl,
+    fontWeight: '600',
+    color: Colors.brand.dark,
+    textAlign: 'center',
+  },
+  recoveryDesc: {
+    fontFamily: Fonts.dmSans,
+    fontSize: FontSizes.sm,
+    color: Colors.text.secondary,
+    textAlign: 'center',
+    lineHeight: FontSizes.sm * 1.7,
+  },
+  recoveryPrimaryBtn: {
+    width: '100%',
+    backgroundColor: Colors.brand.gold,
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  recoveryPrimaryBtnText: {
+    fontFamily: Fonts.playfair,
+    fontSize: FontSizes.base,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  recoveryDismissBtn: {
+    paddingVertical: 6,
+    alignItems: 'center',
+  },
+  recoveryDismissText: {
+    fontFamily: Fonts.dmSans,
+    fontSize: FontSizes.sm,
+    color: Colors.text.muted,
   },
 });
