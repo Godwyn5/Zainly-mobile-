@@ -81,6 +81,37 @@ export const JUZ_30: string[] = [
   'An-Nasr','Al-Masad','Al-Ikhlas','Al-Falaq','An-Nas',
 ];
 
+// ─── Zainly order — surah numbers (built from ZAINLY_ORDER names + QURAN_ORDER index) ──
+// Port exact de lib/zainlyOrder.js — ZAINLY_ORDER contient les noms, QURAN_ORDER donne le numéro
+
+// Map surah name → canonical surah number (1-based)
+const SURAH_NUMBER_BY_NAME: Record<string, number> = Object.fromEntries(
+  QURAN_ORDER.map((name, i) => [name, i + 1]),
+);
+
+// ZAINLY_ORDER as surah numbers — same sequence as ZAINLY_ORDER string[]
+export const ZAINLY_SURAH_NUMBERS: number[] = ZAINLY_ORDER.map(
+  name => SURAH_NUMBER_BY_NAME[name] ?? -1,
+);
+
+// Map surah number → index in ZAINLY_SURAH_NUMBERS — for O(1) lookup
+const ZAINLY_INDEX_BY_SURAH: Record<number, number> = Object.fromEntries(
+  ZAINLY_SURAH_NUMBERS.map((num, i) => [num, i]),
+);
+
+/**
+ * Given the current surah number (canonical 1-114), return the next surah
+ * number in Zainly order, or null if the entire Zainly sequence is complete.
+ * Port exact de lib/zainlyOrder.js → nextZainlySurah()
+ */
+export function nextZainlySurah(currentSurahNumber: number): number | null {
+  const idx = ZAINLY_INDEX_BY_SURAH[currentSurahNumber];
+  if (idx == null) return null; // sourate absente de l'ordre Zainly
+  const nextIdx = idx + 1;
+  if (nextIdx >= ZAINLY_SURAH_NUMBERS.length) return null; // Coran complet
+  return ZAINLY_SURAH_NUMBERS[nextIdx];
+}
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 export function getSurahAyatCount(name: string): number {

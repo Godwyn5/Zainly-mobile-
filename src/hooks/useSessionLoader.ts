@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
+import { nextZainlySurah } from '@/data/onboardingData';
 import type { Ayat } from '@/types';
 
 // ─── Quran JSON types ────────────────────────────────────────────────────────
@@ -120,33 +121,36 @@ export function useSessionLoader() {
         let currentAyah  = (progRow.current_ayah as number) ?? 0;
         const ayahPerDay = (planRow.ayah_per_day as number) ?? 2;
 
-        // 7. End-of-surah loop — identical to web app
+        // 7. End-of-surah loop — identique web app (nextZainlySurah, pas +1 linéaire)
         while (true) {
-          if (currentSurah > 114) {
-            setResult({ status: 'quran_complete' });
-            return;
-          }
-
+          // Guard Coran complet : sourate absente de l'ordre Zainly ou dernière sourate atteinte
           const surahIdx = currentSurah - 1;
           const surah    = quran[surahIdx];
           if (!surah) {
-            setResult({ status: 'error', message: `Sourate ${currentSurah} introuvable.` });
+            // Sourate invalide / hors Quran JSON — traité comme Coran complet (cf. web app INVALID_SURAH)
+            setResult({ status: 'quran_complete' });
             return;
           }
 
           const startAyah = currentAyah + 1;
           if (startAyah > surah.verses.length) {
-            // Surah exhausted — advance in Supabase and loop
+            // Surah exhausted — advance in Zainly order (identique web app nextZainlySurah)
+            const nextSurah = nextZainlySurah(currentSurah);
+            if (nextSurah === null) {
+              // Fin de l'ordre Zainly — Coran complet
+              setResult({ status: 'quran_complete' });
+              return;
+            }
             const { error: advErr } = await supabase
               .from('progress')
-              .update({ current_surah: currentSurah + 1, current_ayah: 0 })
+              .update({ current_surah: nextSurah, current_ayah: 0 })
               .eq('user_id', authUser.id);
             if (advErr) {
               setResult({ status: 'error', message: 'Erreur lors de la progression de sourate.' });
               return;
             }
-            currentSurah += 1;
-            currentAyah   = 0;
+            currentSurah = nextSurah;
+            currentAyah  = 0;
             continue;
           }
 
