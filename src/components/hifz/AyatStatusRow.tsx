@@ -1,7 +1,9 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
 import { Colors } from '@/constants/colors';
 import { Fonts, FontSizes } from '@/constants/typography';
+import { PressableScale } from '@/components/ui/PressableScale';
+import { useAyatAudio } from '@/hooks/useAyatAudio';
 import type { EnrichedReviewItem } from '@/hooks/useHifzLoader';
 
 type Props = {
@@ -17,6 +19,7 @@ const STATUS_CONFIG = {
 
 export function AyatStatusRow({ item, isLast }: Props) {
   const cfg = STATUS_CONFIG[item.final_test_status] ?? STATUS_CONFIG.pending;
+  const { status: audioStatus, toggle: audioToggle } = useAyatAudio(item.globalNum);
 
   return (
     <View style={[styles.row, !isLast && styles.rowBorder]}>
@@ -42,6 +45,27 @@ export function AyatStatusRow({ item, isLast }: Props) {
       {item.translation ? (
         <Text style={styles.translation}>{item.translation}</Text>
       ) : null}
+
+      {/* Bouton audio */}
+      <PressableScale onPress={audioToggle} style={[
+        styles.audioBtn,
+        audioStatus === 'playing' && styles.audioBtnActive,
+        audioStatus === 'error'   && styles.audioBtnError,
+      ]}>
+        {audioStatus === 'loading' ? (
+          <ActivityIndicator color={Colors.brand.dark} size="small" />
+        ) : (
+          <Text style={styles.audioBtnIcon}>
+            {audioStatus === 'playing' ? '⏸' : '🔊'}
+          </Text>
+        )}
+        <Text style={[
+          styles.audioBtnText,
+          audioStatus === 'playing' && styles.audioBtnTextActive,
+        ]}>
+          {audioStatus === 'playing' ? 'Pause' : audioStatus === 'error' ? 'Erreur — réessayer' : 'Écouter l\'ayat'}
+        </Text>
+      </PressableScale>
     </View>
   );
 }
@@ -97,5 +121,36 @@ const styles = StyleSheet.create({
     fontSize: FontSizes.sm,
     color: Colors.text.muted,
     lineHeight: FontSizes.sm * 1.6,
+  },
+
+  audioBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    borderWidth: 1,
+    borderColor: Colors.ui.border,
+    borderRadius: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    alignSelf: 'center',
+  },
+  audioBtnActive: {
+    borderColor: Colors.brand.gold,
+    backgroundColor: 'rgba(184,150,46,0.08)',
+  },
+  audioBtnError: {
+    borderColor: Colors.status.error,
+  },
+  audioBtnIcon: {
+    fontSize: 15,
+  },
+  audioBtnText: {
+    fontFamily: Fonts.dmSans,
+    fontSize: FontSizes.sm,
+    color: Colors.text.secondary,
+  },
+  audioBtnTextActive: {
+    color: Colors.brand.gold,
   },
 });

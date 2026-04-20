@@ -20,6 +20,7 @@ export type EnrichedReviewItem = ReviewItem & {
   arabicText:      string;
   transliteration: string;
   translation:     string;
+  globalNum:       number; // 1-based global ayah index — used for audio URL
 };
 
 // ─── Load result ──────────────────────────────────────────────────────────────
@@ -79,14 +80,16 @@ export function useHifzLoader() {
 
         // 4. Enrich each item — identique web app (loadHifz inline enrichment)
         const enriched: EnrichedReviewItem[] = allItems.map(item => {
-          const surahIdx = (item.surah_number as number) - 1;
-          const verse    = quran[surahIdx]?.verses?.find(v => v.id === (item.ayah as number));
-          const verseFr  = quranFr[surahIdx]?.verses?.find(v => v.id === (item.ayah as number));
+          const surahIdx         = (item.surah_number as number) - 1;
+          const ayatId           = item.ayah as number;
+          const verse            = quran[surahIdx]?.verses?.find(v => v.id === ayatId);
+          const verseFr          = quranFr[surahIdx]?.verses?.find(v => v.id === ayatId);
+          const globalAyatOffset = quran.slice(0, surahIdx).reduce((acc, s) => acc + (s.verses?.length ?? 0), 0);
           return {
             id:               item.id as string,
             user_id:          item.user_id as string,
             surah_number:     item.surah_number as number,
-            ayah:             item.ayah as number,
+            ayah:             ayatId,
             next_review:      item.next_review as string,
             review_cycle:     item.review_cycle as number,
             ease_factor:      (item.ease_factor as number) ?? 2.0,
@@ -96,6 +99,7 @@ export function useHifzLoader() {
             arabicText:       verse?.text ?? '',
             transliteration:  verse?.transliteration ?? '',
             translation:      verseFr?.translation ?? '',
+            globalNum:        globalAyatOffset + ayatId,
           };
         });
 
