@@ -1,11 +1,12 @@
 import React, { useEffect } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
 import Animated, {
   useSharedValue, useAnimatedStyle, withTiming, Easing, FadeIn,
 } from 'react-native-reanimated';
 import { Colors } from '@/constants/colors';
 import { Fonts, FontSizes, LineHeights } from '@/constants/typography';
 import { PressableScale } from '@/components/ui/PressableScale';
+import { useAyatAudio } from '@/hooks/useAyatAudio';
 import type { RevisionItem } from '@/data/revisionMock';
 import type { RevisionPhase } from '@/hooks/useRevisionState';
 
@@ -27,6 +28,8 @@ export function RevisionCard({
 }: Props) {
   const opacity   = useSharedValue(0);
   const translateY = useSharedValue(10);
+
+  const { status: audioStatus, toggle: audioToggle } = useAyatAudio(item.globalNum);
 
   useEffect(() => {
     opacity.value    = 0;
@@ -78,6 +81,27 @@ export function RevisionCard({
 
       {/* Divider */}
       <View style={styles.divider} />
+
+      {/* Bouton audio */}
+      <PressableScale onPress={audioToggle} style={[
+        styles.audioBtn,
+        audioStatus === 'playing' && styles.audioBtnActive,
+        audioStatus === 'error'   && styles.audioBtnError,
+      ]}>
+        {audioStatus === 'loading' ? (
+          <ActivityIndicator color={Colors.brand.dark} size="small" />
+        ) : (
+          <Text style={styles.audioBtnIcon}>
+            {audioStatus === 'playing' ? '⏸' : '🔊'}
+          </Text>
+        )}
+        <Text style={[
+          styles.audioBtnText,
+          audioStatus === 'playing' && styles.audioBtnTextActive,
+        ]}>
+          {audioStatus === 'playing' ? 'Pause' : audioStatus === 'error' ? 'Erreur — réessayer' : 'Écouter l\'ayat'}
+        </Text>
+      </PressableScale>
 
       {/* Texte arabe — affiché uniquement après révélation */}
       {phase === 'revealed' && (
@@ -272,5 +296,36 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
     color: Colors.text.secondary,
     textAlign: 'center',
+  },
+
+  audioBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    borderWidth: 1,
+    borderColor: Colors.ui.border,
+    borderRadius: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    alignSelf: 'center',
+  },
+  audioBtnActive: {
+    borderColor: Colors.brand.gold,
+    backgroundColor: 'rgba(184,150,46,0.08)',
+  },
+  audioBtnError: {
+    borderColor: Colors.status.error,
+  },
+  audioBtnIcon: {
+    fontSize: 15,
+  },
+  audioBtnText: {
+    fontFamily: Fonts.dmSans,
+    fontSize: FontSizes.sm,
+    color: Colors.text.secondary,
+  },
+  audioBtnTextActive: {
+    color: Colors.brand.gold,
   },
 });

@@ -104,6 +104,7 @@ export function useRevisionLoader() {
           const ayatId    = item.ayah as number;
           const verse     = surah?.verses?.find(v => v.id === ayatId);
           const verseFr   = surahFr?.verses?.find(v => v.id === ayatId);
+          const globalAyatOffset = quran.slice(0, surahIdx).reduce((acc, s) => acc + (s.verses?.length ?? 0), 0);
           return {
             id:               item.id as string,
             surah_number:     item.surah_number as number,
@@ -116,6 +117,7 @@ export function useRevisionLoader() {
             transliteration:  verse?.transliteration ?? '',
             translation:      verseFr?.translation ?? '',
             surahLabel:       surah?.transliteration ?? surah?.name ?? `Sourate ${item.surah_number}`,
+            globalNum:        globalAyatOffset + ayatId,
           };
         });
 

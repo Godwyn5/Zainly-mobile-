@@ -15,6 +15,7 @@ export type RevisionItem = {
   arabicText: string;
   transliteration: string;
   translation: string;
+  globalNum: number; // 1-based global ayah index — used for audio URL
 };
 
 export const REVISION_MOCK: RevisionItem[] = [
@@ -26,6 +27,7 @@ export const REVISION_MOCK: RevisionItem[] = [
     arabicText: 'إِلَٰهِ النَّاسِ',
     transliteration: 'Ilāhi n-nās',
     translation: 'du Dieu des hommes,',
+    globalNum: 6227,
   },
   {
     id: 'r2',
@@ -35,6 +37,7 @@ export const REVISION_MOCK: RevisionItem[] = [
     arabicText: 'مِن شَرِّ الْوَسْوَاسِ الْخَنَّاسِ',
     transliteration: 'Min šarri l-waswāsi l-ḫannās',
     translation: 'contre le mal du tentateur furtif,',
+    globalNum: 6228,
   },
   {
     id: 'r3',
@@ -44,6 +47,7 @@ export const REVISION_MOCK: RevisionItem[] = [
     arabicText: 'وَمِن شَرِّ غَاسِقٍ إِذَا وَقَبَ',
     transliteration: 'Wa-min šarri ġāsiqin iḏā waqab',
     translation: 'contre le mal de l\'obscurité quand elle s\'étend,',
+    globalNum: 6222,
   },
   {
     id: 'r4',
@@ -53,6 +57,7 @@ export const REVISION_MOCK: RevisionItem[] = [
     arabicText: 'اهْدِنَا الصِّرَاطَ الْمُسْتَقِيمَ',
     transliteration: 'Ihdinā ṣ-ṣirāṭa l-mustaqīm',
     translation: 'Guide-nous dans le droit chemin,',
+    globalNum: 6,
   },
   {
     id: 'r5',
@@ -62,6 +67,7 @@ export const REVISION_MOCK: RevisionItem[] = [
     arabicText: 'صِرَاطَ الَّذِينَ أَنْعَمْتَ عَلَيْهِمْ غَيْرِ الْمَغْضُوبِ عَلَيْهِمْ وَلَا الضَّالِّينَ',
     transliteration: 'Ṣirāṭa llaḏīna anʿamta ʿalayhim ġayri l-maġḍūbi ʿalayhim wa-lā ḍ-ḍāllīn',
     translation: 'le chemin de ceux que Tu as comblés de bienfaits, non pas de ceux qui ont encouru Ta colère, ni des égarés.',
+    globalNum: 7,
   },
 ];
 
