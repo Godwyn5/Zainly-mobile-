@@ -28,6 +28,7 @@ export type SessionLoadStatus =
   | 'ready'
   | 'session_done_today'
   | 'quran_complete'
+  | 'invalid_surah'
   | 'premium_blocked'
   | 'error';
 
@@ -35,6 +36,7 @@ export type SessionLoadResult =
   | { status: 'loading' }
   | { status: 'session_done_today' }
   | { status: 'quran_complete' }
+  | { status: 'invalid_surah' }
   | { status: 'premium_blocked'; sessionsCount: number }
   | { status: 'error'; message: string }
   | {
@@ -127,8 +129,9 @@ export function useSessionLoader() {
           const surahIdx = currentSurah - 1;
           const surah    = quran[surahIdx];
           if (!surah) {
-            // Sourate invalide / hors Quran JSON — traité comme Coran complet (cf. web app INVALID_SURAH)
-            setResult({ status: 'quran_complete' });
+            // Sourate invalide ou hors limites du Quran JSON — status dédié (cf. web app INVALID_SURAH)
+            // Distinct de quran_complete : l'utilisateur n'a pas terminé, la donnée est corrompue
+            setResult({ status: 'invalid_surah' });
             return;
           }
 

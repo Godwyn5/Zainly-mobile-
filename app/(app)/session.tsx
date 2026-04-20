@@ -78,6 +78,18 @@ export default function SessionScreen() {
     );
   }
 
+  // ── Invalid surah — données corrompues ou index hors limites ─────────────
+  if (result.status === 'invalid_surah') {
+    return (
+      <View style={[styles.center, { paddingTop: insets.top }]}>
+        <Text style={styles.errorText}>Une erreur est survenue. Merci de réessayer.</Text>
+        <Pressable onPress={() => router.replace('/(app)/(tabs)/today')} style={styles.btn}>
+          <Text style={styles.btnText}>Retour à l'accueil</Text>
+        </Pressable>
+      </View>
+    );
+  }
+
   // ── Error ──────────────────────────────────────────────────────────────────
   if (result.status === 'error') {
     return (
