@@ -184,6 +184,7 @@ function SessionInner({
 
         {phase === 'listen' && ayat && (
           <ListenButton
+            globalNum={ayat.globalNum}
             listenCount={listenCount}
             onListen={actions.incrementListen}
           />

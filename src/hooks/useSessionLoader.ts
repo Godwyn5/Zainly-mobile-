@@ -4,7 +4,7 @@ import type { Ayat } from '@/types';
 
 // ─── Quran JSON types ────────────────────────────────────────────────────────
 
-type QuranVerse = { id: number; text: string };
+type QuranVerse = { id: number; text: string; transliteration?: string };
 type QuranSurah = { id: number; transliteration: string; name: string; verses: QuranVerse[] };
 
 type QuranFrVerse = { id: number; translation: string };
@@ -134,12 +134,15 @@ export function useSessionLoader() {
           // 7. Slice ayats for this session
           const endAyah = Math.min(startAyah + ayahPerDay - 1, surah.verses.length);
           const surahFr = quranFr[surahIdx];
+          // globalAyatOffset — sum of verses in all preceding surahs (identique web app globalAyatNumber)
+          const globalAyatOffset = quran.slice(0, surahIdx).reduce((acc, s) => acc + (s.verses?.length ?? 0), 0);
           const ayats: Ayat[] = surah.verses
             .filter(v => v.id >= startAyah && v.id <= endAyah)
             .map(v => ({
               id:          v.id,
               text:        v.text,
               translation: surahFr?.verses?.find(fv => fv.id === v.id)?.translation ?? '',
+              globalNum:   globalAyatOffset + v.id,
             }));
 
           setResult({

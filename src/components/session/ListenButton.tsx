@@ -1,39 +1,54 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
 import { Colors } from '@/constants/colors';
 import { Fonts, FontSizes } from '@/constants/typography';
 import { PressableScale } from '@/components/ui/PressableScale';
+import { useAyatAudio } from '@/hooks/useAyatAudio';
 
 type Props = {
+  globalNum: number;   // 1-based global ayah number — used to build audio URL
   listenCount: number;
   onListen: () => void;
 };
 
-const LISTEN_LABELS = [
-  'Simuler écoute 1 / 3',
-  'Simuler écoute 2 / 3',
-  'Simuler écoute 3 / 3',
-];
-
-export function ListenButton({ listenCount, onListen }: Props) {
+export function ListenButton({ globalNum, listenCount, onListen }: Props) {
   const isDone = listenCount >= 3;
-  const label  = isDone ? 'Ayat écouté 3 fois ✓' : LISTEN_LABELS[listenCount] ?? LISTEN_LABELS[0];
+
+  // Real audio — identical to web app SessionAudioButton
+  // onEnded fires when playback finishes naturally → increments listenCount
+  const { status, toggle } = useAyatAudio(globalNum, onListen);
+
+  const isPlaying = status === 'playing';
+  const isLoading = status === 'loading';
+  const isError   = status === 'error';
+
+  const icon  = isLoading ? null  : isPlaying ? '⏸' : '🔊';
+  const label = isDone
+    ? 'Ayat écouté 3 fois ✓'
+    : isPlaying
+      ? 'Pause'
+      : isError
+        ? 'Erreur — réessayer'
+        : `Écouter l'ayat (${listenCount + 1} / 3)`;
 
   return (
     <View style={styles.container}>
-      <Text style={styles.mockNotice}>Audio non disponible dans cette version</Text>
-
       <PressableScale
-        onPress={isDone ? undefined : onListen}
-        style={[styles.btn, isDone && styles.btnDone]}
+        onPress={isDone ? undefined : toggle}
+        disabled={isDone}
+        style={[styles.btn, isDone && styles.btnDone, isError && styles.btnError]}
       >
-        <Text style={styles.btnIcon}>🔊</Text>
+        {isLoading ? (
+          <ActivityIndicator color="#fff" size="small" />
+        ) : (
+          <Text style={styles.btnIcon}>{icon}</Text>
+        )}
         <Text style={styles.btnText}>{label}</Text>
       </PressableScale>
 
-      {!isDone && (
+      {!isDone && !isError && (
         <Text style={styles.hint}>
-          Appuie {3 - listenCount} fois de plus pour débloquer le test
+          {3 - listenCount} écoute{3 - listenCount > 1 ? 's' : ''} restante{3 - listenCount > 1 ? 's' : ''} pour débloquer le test
         </Text>
       )}
     </View>
@@ -44,14 +59,6 @@ const styles = StyleSheet.create({
   container: {
     marginTop: 20,
     gap: 10,
-  },
-  mockNotice: {
-    fontFamily: Fonts.dmSans,
-    fontSize: FontSizes.xs,
-    color: Colors.text.muted,
-    textAlign: 'center',
-    fontStyle: 'italic',
-    letterSpacing: 0.2,
   },
   btn: {
     flexDirection: 'row',
@@ -64,6 +71,9 @@ const styles = StyleSheet.create({
   },
   btnDone: {
     backgroundColor: '#2d5a42',
+  },
+  btnError: {
+    backgroundColor: '#a94442',
   },
   btnIcon: {
     fontSize: 18,

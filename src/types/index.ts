@@ -31,6 +31,7 @@ export interface Ayat {
   id: number;
   text: string;
   translation?: string;
+  globalNum: number;   // 1-based global ayah index across all surahs — used for audio URL
 }
 
 export type SessionPhase =
