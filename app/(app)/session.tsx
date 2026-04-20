@@ -52,6 +52,18 @@ export default function SessionScreen() {
     );
   }
 
+  // ── Premium blocked — redirect to paywall, no flash ──────────────────────
+  // useEffect avoids "Cannot update during render" warning from expo-router
+  React.useEffect(() => {
+    if (result.status === 'premium_blocked') {
+      router.replace('/(app)/paywall');
+    }
+  }, [result.status, router]);
+
+  if (result.status === 'premium_blocked') {
+    return <View style={styles.center} />;
+  }
+
   // ── Quran complete ─────────────────────────────────────────────────────────
   if (result.status === 'quran_complete') {
     return (

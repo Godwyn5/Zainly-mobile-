@@ -27,12 +27,14 @@ export type SessionLoadStatus =
   | 'ready'
   | 'session_done_today'
   | 'quran_complete'
+  | 'premium_blocked'
   | 'error';
 
 export type SessionLoadResult =
   | { status: 'loading' }
   | { status: 'session_done_today' }
   | { status: 'quran_complete' }
+  | { status: 'premium_blocked'; sessionsCount: number }
   | { status: 'error'; message: string }
   | {
       status: 'ready';
@@ -63,10 +65,12 @@ export function useSessionLoader() {
           return;
         }
 
-        // 2. Fetch progress + plan in parallel — Supabase is the single source of truth
-        const [{ data: progRows }, { data: planRows }] = await Promise.all([
+        // 2. Fetch progress + plan + profile in parallel — Supabase is the single source of truth
+        const today0 = todayStr();
+        const [{ data: progRows }, { data: planRows }, { data: profile }] = await Promise.all([
           supabase.from('progress').select('*').eq('user_id', authUser.id).order('created_at', { ascending: false }).limit(1),
           supabase.from('plans').select('*').eq('user_id', authUser.id).order('created_at', { ascending: false }).limit(1),
+          supabase.from('profiles').select('is_premium').eq('id', authUser.id).maybeSingle(),
         ]);
 
         const progRow = progRows?.[0] ?? null;
@@ -77,13 +81,28 @@ export function useSessionLoader() {
           return;
         }
 
-        // 3. Session already done today guard — identique web app
-        if (progRow.last_session_date === todayStr()) {
+        // 3. Premium gate — identique web app (session/page.js:177-190)
+        // Count today immediately (deduplicated) — prevents bypass by abandoning mid-session
+        const isPremium = profile?.is_premium === true;
+        const rawDates = Array.isArray(progRow.session_dates) ? (progRow.session_dates as string[]) : [];
+        const sessionDates = rawDates.includes(today0) ? rawDates : [...rawDates, today0];
+        const sessionsCount = sessionDates.length;
+        if (!isPremium && sessionsCount >= 5) {
+          setResult({ status: 'premium_blocked', sessionsCount });
+          return;
+        }
+        // Persist session start immediately so abandoning mid-session still counts
+        if (!rawDates.includes(today0)) {
+          await supabase.from('progress').update({ session_dates: sessionDates }).eq('user_id', authUser.id);
+        }
+
+        // 4. Session already done today guard — identique web app
+        if (progRow.last_session_date === today0) {
           setResult({ status: 'session_done_today' });
           return;
         }
 
-        // 4. Load quran JSON — bundled assets (module-level cache)
+        // 5. Load quran JSON — bundled assets (module-level cache)
         if (!cachedQuran || !cachedQuranFr) {
           // eslint-disable-next-line @typescript-eslint/no-var-requires
           const [q, qfr] = await Promise.all([
@@ -96,12 +115,12 @@ export function useSessionLoader() {
         const quran   = cachedQuran!;
         const quranFr = cachedQuranFr!;
 
-        // 5. Position from progress — Supabase only, no params override
+        // 6. Position from progress — Supabase only, no params override
         let currentSurah = (progRow.current_surah as number) ?? 1;
         let currentAyah  = (progRow.current_ayah as number) ?? 0;
         const ayahPerDay = (planRow.ayah_per_day as number) ?? 2;
 
-        // 6. End-of-surah loop — identical to web app
+        // 7. End-of-surah loop — identical to web app
         while (true) {
           if (currentSurah > 114) {
             setResult({ status: 'quran_complete' });
@@ -131,7 +150,7 @@ export function useSessionLoader() {
             continue;
           }
 
-          // 7. Slice ayats for this session
+          // 8. Slice ayats for this session
           const endAyah = Math.min(startAyah + ayahPerDay - 1, surah.verses.length);
           const surahFr = quranFr[surahIdx];
           // globalAyatOffset — sum of verses in all preceding surahs (identique web app globalAyatNumber)
