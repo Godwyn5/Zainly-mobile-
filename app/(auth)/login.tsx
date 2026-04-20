@@ -9,10 +9,10 @@ import { useAuth } from '@/hooks/useAuth';
 import { Colors } from '@/constants/colors';
 import { FontSizes } from '@/constants/typography';
 
-type Mode = 'login' | 'signup';
+type Mode = 'login' | 'signup' | 'reset';
 
 export default function LoginScreen() {
-  const { signIn, signUp } = useAuth();
+  const { signIn, signUp, resetPassword } = useAuth();
 
   const [mode, setMode]         = useState<Mode>('login');
   const [email, setEmail]       = useState('');
@@ -22,6 +22,24 @@ export default function LoginScreen() {
   const [info, setInfo]         = useState<string | null>(null);
 
   async function handleSubmit() {
+    if (mode === 'reset') {
+      if (!email.trim()) {
+        setError('Saisis ton adresse e-mail.');
+        return;
+      }
+      setError(null);
+      setInfo(null);
+      setSubmitting(true);
+      const err = await resetPassword(email.trim());
+      setSubmitting(false);
+      if (err) {
+        setError(err.message);
+        return;
+      }
+      setInfo('Si ce compte existe, un e-mail de réinitialisation vient d\'être envoyé.');
+      return;
+    }
+
     if (!email.trim() || !password.trim()) {
       setError('Remplis tous les champs.');
       return;
@@ -58,6 +76,18 @@ export default function LoginScreen() {
     setInfo(null);
   }
 
+  function goToReset() {
+    setMode('reset');
+    setError(null);
+    setInfo(null);
+  }
+
+  function goBackToLogin() {
+    setMode('login');
+    setError(null);
+    setInfo(null);
+  }
+
   return (
     <SafeAreaView style={styles.safe}>
       <KeyboardAvoidingView
@@ -73,69 +103,122 @@ export default function LoginScreen() {
           <View style={styles.header}>
             <Text style={styles.wordmark}>Zainly</Text>
             <Text style={styles.tagline}>
-              {mode === 'login' ? 'Content de te revoir.' : 'Commence ta mémorisation.'}
+              {mode === 'login'  && 'Content de te revoir.'}
+              {mode === 'signup' && 'Commence ta mémorisation.'}
+              {mode === 'reset'  && 'Réinitialiser le mot de passe.'}
             </Text>
           </View>
 
-          {/* Form */}
-          <View style={styles.form}>
-            <View style={styles.fieldGroup}>
-              <Text style={styles.label}>Adresse e-mail</Text>
-              <TextInput
-                style={styles.input}
-                value={email}
-                onChangeText={setEmail}
-                placeholder="ton@email.com"
-                placeholderTextColor={Colors.text.muted}
-                autoCapitalize="none"
-                autoCorrect={false}
-                keyboardType="email-address"
-                textContentType="emailAddress"
-              />
+          {/* ── RESET MODE ── */}
+          {mode === 'reset' && (
+            <View style={styles.form}>
+              <View style={styles.fieldGroup}>
+                <Text style={styles.label}>Adresse e-mail</Text>
+                <TextInput
+                  style={styles.input}
+                  value={email}
+                  onChangeText={setEmail}
+                  placeholder="ton@email.com"
+                  placeholderTextColor={Colors.text.muted}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  keyboardType="email-address"
+                  textContentType="emailAddress"
+                />
+              </View>
+
+              {error && <Text style={styles.errorText}>{error}</Text>}
+              {info  && <Text style={styles.infoText}>{info}</Text>}
+
+              <TouchableOpacity
+                style={[styles.button, submitting && styles.buttonDisabled]}
+                onPress={handleSubmit}
+                disabled={submitting}
+                activeOpacity={0.85}
+              >
+                {submitting
+                  ? <ActivityIndicator color="#fff" />
+                  : <Text style={styles.buttonText}>Envoyer le lien</Text>
+                }
+              </TouchableOpacity>
+
+              <TouchableOpacity style={styles.toggle} onPress={goBackToLogin} activeOpacity={0.7}>
+                <Text style={styles.toggleText}>
+                  <Text style={styles.toggleLink}>← Retour à la connexion</Text>
+                </Text>
+              </TouchableOpacity>
             </View>
+          )}
 
-            <View style={styles.fieldGroup}>
-              <Text style={styles.label}>Mot de passe</Text>
-              <TextInput
-                style={styles.input}
-                value={password}
-                onChangeText={setPassword}
-                placeholder="••••••••"
-                placeholderTextColor={Colors.text.muted}
-                secureTextEntry
-                textContentType={mode === 'signup' ? 'newPassword' : 'password'}
-              />
-            </View>
+          {/* ── LOGIN / SIGNUP MODE ── */}
+          {mode !== 'reset' && (
+            <>
+              <View style={styles.form}>
+                <View style={styles.fieldGroup}>
+                  <Text style={styles.label}>Adresse e-mail</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={email}
+                    onChangeText={setEmail}
+                    placeholder="ton@email.com"
+                    placeholderTextColor={Colors.text.muted}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    keyboardType="email-address"
+                    textContentType="emailAddress"
+                  />
+                </View>
 
-            {error && <Text style={styles.errorText}>{error}</Text>}
-            {info  && <Text style={styles.infoText}>{info}</Text>}
+                <View style={styles.fieldGroup}>
+                  <Text style={styles.label}>Mot de passe</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={password}
+                    onChangeText={setPassword}
+                    placeholder="••••••••"
+                    placeholderTextColor={Colors.text.muted}
+                    secureTextEntry
+                    textContentType={mode === 'signup' ? 'newPassword' : 'password'}
+                  />
+                </View>
 
-            <TouchableOpacity
-              style={[styles.button, submitting && styles.buttonDisabled]}
-              onPress={handleSubmit}
-              disabled={submitting}
-              activeOpacity={0.85}
-            >
-              {submitting
-                ? <ActivityIndicator color="#fff" />
-                : <Text style={styles.buttonText}>
-                    {mode === 'login' ? 'Se connecter' : 'Créer un compte'}
+                {error && <Text style={styles.errorText}>{error}</Text>}
+                {info  && <Text style={styles.infoText}>{info}</Text>}
+
+                <TouchableOpacity
+                  style={[styles.button, submitting && styles.buttonDisabled]}
+                  onPress={handleSubmit}
+                  disabled={submitting}
+                  activeOpacity={0.85}
+                >
+                  {submitting
+                    ? <ActivityIndicator color="#fff" />
+                    : <Text style={styles.buttonText}>
+                        {mode === 'login' ? 'Se connecter' : 'Créer un compte'}
+                      </Text>
+                  }
+                </TouchableOpacity>
+
+                {mode === 'login' && (
+                  <TouchableOpacity onPress={goToReset} activeOpacity={0.7} style={styles.forgotBtn}>
+                    <Text style={styles.forgotText}>Mot de passe oublié ?</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+
+              {/* Toggle mode */}
+              <TouchableOpacity style={styles.toggle} onPress={toggleMode} activeOpacity={0.7}>
+                <Text style={styles.toggleText}>
+                  {mode === 'login'
+                    ? "Pas encore de compte ? "
+                    : "Déjà un compte ? "}
+                  <Text style={styles.toggleLink}>
+                    {mode === 'login' ? "S'inscrire" : 'Se connecter'}
                   </Text>
-              }
-            </TouchableOpacity>
-          </View>
-
-          {/* Toggle mode */}
-          <TouchableOpacity style={styles.toggle} onPress={toggleMode} activeOpacity={0.7}>
-            <Text style={styles.toggleText}>
-              {mode === 'login'
-                ? "Pas encore de compte ? "
-                : "Déjà un compte ? "}
-              <Text style={styles.toggleLink}>
-                {mode === 'login' ? "S'inscrire" : 'Se connecter'}
-              </Text>
-            </Text>
-          </TouchableOpacity>
+                </Text>
+              </TouchableOpacity>
+            </>
+          )}
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -233,5 +316,14 @@ const styles = StyleSheet.create({
   toggleLink: {
     color: Colors.brand.dark,
     fontWeight: '600',
+  },
+  forgotBtn: {
+    alignItems: 'center',
+    paddingVertical: 4,
+    marginTop: -8,
+  },
+  forgotText: {
+    fontSize: FontSizes.sm,
+    color: Colors.text.muted,
   },
 });
