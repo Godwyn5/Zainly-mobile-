@@ -128,15 +128,6 @@ export default function ProfileScreen() {
           <Text style={styles.sectionLabel}>Compte</Text>
           <View style={styles.card}>
             <Row label="Email" value={data.email || '—'} />
-            <Divider />
-            <View style={{ paddingVertical: 8 }}>
-              <Pressable
-                onPress={handleSignOut}
-                style={({ pressed }) => [styles.signOutBtn, pressed && styles.btnPressed]}
-              >
-                <Text style={styles.signOutBtnText}>Déconnexion</Text>
-              </Pressable>
-            </View>
           </View>
         </View>
 
@@ -176,6 +167,12 @@ export default function ProfileScreen() {
         <View style={styles.legalFooter}>
           <Text style={styles.legalText}>Zainly · Mémorisation du Coran</Text>
           <Text style={styles.legalText}>Baraka Allahou fikoum</Text>
+          <Pressable
+            onPress={handleSignOut}
+            style={({ pressed }) => [{ opacity: pressed ? 0.5 : 1 }, { marginTop: 12 }]}
+          >
+            <Text style={styles.signOutLink}>Se déconnecter</Text>
+          </Pressable>
         </View>
 
       </View>
@@ -303,20 +300,12 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#fff',
   },
-  signOutBtn: {
-    width: '100%',
-    paddingVertical: 13,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: Colors.ui.border,
-  },
-  signOutBtnText: {
+  signOutLink: {
     fontFamily: Fonts.dmSans,
-    fontSize: 14,
-    fontWeight: '600',
-    color: Colors.brand.dark,
+    fontSize: 13,
+    color: '#999999',
+    textAlign: 'center',
+    textDecorationLine: 'underline',
   },
   btnPressed: {
     opacity: 0.6,

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 import {
   View, Text, Pressable, ActivityIndicator, ScrollView,
   StyleSheet, TextInput, KeyboardAvoidingView, Platform,
@@ -106,12 +107,18 @@ export default function TodayScreen() {
                 <Text style={s.headerDate}>{dateStr}</Text>
               </View>
               <View style={s.streakBlock}>
-                <View style={s.streakRow}>
-                  <Text style={s.streakFire}>🔥</Text>
-                  <Text style={s.streakNum}>{streak}</Text>
-                </View>
-                <Text style={s.streakLabel}>jours</Text>
-                {streak > 0 && <Text style={s.streakSub}>Continue comme ça</Text>}
+                {streak <= 1 ? (
+                  <Text style={s.streakFirstDay}>Premier jour{`\n`}le voyage commence 🌿</Text>
+                ) : (
+                  <>
+                    <View style={s.streakRow}>
+                      <Text style={s.streakFire}>🔥</Text>
+                      <Text style={s.streakNum}>{streak}</Text>
+                    </View>
+                    <Text style={s.streakLabel}>jours de suite</Text>
+                    <Text style={s.streakSub}>Ne t'arrête pas</Text>
+                  </>
+                )}
               </View>
             </View>
 
@@ -191,9 +198,12 @@ export default function TodayScreen() {
             {/* CTA zone */}
             {sessionDone ? (
               <>
-                <View style={s.doneBanner}>
+                <Animated.View
+                  entering={FadeInDown.duration(400).springify().damping(16)}
+                  style={s.doneBanner}
+                >
                   <Text style={s.doneBannerText}>Session du jour complétée ✓</Text>
-                </View>
+                </Animated.View>
                 {revisions.length > 0 && (
                   <Pressable style={s.goldBtn} onPress={() => router.push('/(app)/session')}>
                     <Text style={s.goldBtnText}>Commencer la révision →</Text>
@@ -238,11 +248,9 @@ export default function TodayScreen() {
             </View>
             <Text style={s.objectifCount}>{totalMemorized} / {TOTAL_QURAN} ayat</Text>
             <Text style={s.objectifEst}>
-              {estMonths === null
-                ? 'Calcul en cours...'
-                : estMonths === 0
-                  ? 'Tu as mémorisé tout le Coran. MashaAllah !'
-                  : `Il te reste environ ${estMonths} mois pour atteindre ton objectif.`}
+              {estMonths === 0
+                ? 'Tu as mémorisé tout le Coran. MashaAllah !'
+                : 'Chaque ayat te rapproche du Coran complet. Continue.'}
             </Text>
           </View>
 
@@ -312,6 +320,7 @@ const s = StyleSheet.create({
   headerName:     { fontSize: 26, fontWeight: '600', color: '#fff', marginTop: 2, marginRight: 8 },
   headerDate:     { fontSize: 13, color: 'rgba(255,255,255,0.5)', marginTop: 4 },
   streakBlock:    { alignItems: 'flex-end' },
+  streakFirstDay: { fontSize: 11, color: 'rgba(255,255,255,0.7)', textAlign: 'right', lineHeight: 17 },
   streakRow:      { flexDirection: 'row', alignItems: 'baseline', gap: 4 },
   streakFire:     { fontSize: 20 },
   streakNum:      { fontSize: 32, fontWeight: '700', color: '#fff', lineHeight: 36 },
@@ -346,8 +355,8 @@ const s = StyleSheet.create({
   noRevChip:   { marginTop: 10, alignSelf: 'flex-start', backgroundColor: 'rgba(184,150,46,0.1)', borderRadius: 20, paddingHorizontal: 14, paddingVertical: 6 },
   noRevText:   { fontSize: 13, color: '#B8962E' },
 
-  doneBanner:     { marginTop: 24, padding: 16, backgroundColor: 'rgba(22,48,38,0.06)', borderRadius: 12, alignItems: 'center' },
-  doneBannerText: { fontSize: 15, color: '#163026', fontWeight: '500' },
+  doneBanner:     { marginTop: 24, padding: 16, backgroundColor: '#B8962E', borderRadius: 12, alignItems: 'center', shadowColor: '#B8962E', shadowOpacity: 0.3, shadowRadius: 12, shadowOffset: { width: 0, height: 4 }, elevation: 3 },
+  doneBannerText: { fontSize: 15, color: '#fff', fontWeight: '700' },
 
   sessionHint:     { fontSize: 12, fontStyle: 'italic', color: '#A09890', textAlign: 'center', marginTop: 16 },
   gradientBtnWrap: { marginTop: 12, borderRadius: 12, overflow: 'hidden' },
@@ -367,7 +376,7 @@ const s = StyleSheet.create({
   // ── OBJECTIF
   objectifCard:  { marginHorizontal: 16, marginTop: 24, backgroundColor: '#fff', borderRadius: 20, padding: 24, ...CARD_SHADOW },
   progressBarBg: { height: 6, backgroundColor: '#E2D9CC', borderRadius: 3, overflow: 'hidden', marginTop: 16 },
-  progressBarFill:{ height: '100%', backgroundColor: '#163026', borderRadius: 3 },
+  progressBarFill:{ height: '100%', backgroundColor: '#B8962E', borderRadius: 3 },
   objectifCount: { fontSize: 13, color: '#6B6357', marginTop: 10 },
   objectifEst:   { fontSize: 14, fontStyle: 'italic', color: '#6B6357', marginTop: 8, lineHeight: 22 },
 

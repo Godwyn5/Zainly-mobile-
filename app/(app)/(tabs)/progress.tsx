@@ -85,7 +85,9 @@ export default function ProgressScreen() {
           <Text style={s.eyebrow}>VERS LE CORAN COMPLET</Text>
           <View style={s.progressHeader}>
             <Text style={s.progressCount}>{totalMemorized} / {TOTAL_QURAN} ayat</Text>
-            <Text style={s.progressPct}>{progressPct.toFixed(1)}%</Text>
+            <Text style={s.progressPct}>
+              {totalMemorized === 0 ? `${totalMemorized} mémorisé` : `${progressPct.toFixed(1)}%`}
+            </Text>
           </View>
           <View style={s.progressBarBg}>
             <View style={[s.progressBarFill, { width: `${progressPct.toFixed(2)}%` as unknown as number }]} />
@@ -175,7 +177,7 @@ const s = StyleSheet.create({
   progressCount:   { fontSize: 13, color: '#6B6357' },
   progressPct:     { fontSize: 13, fontWeight: '600', color: '#163026' },
   progressBarBg:   { height: 8, backgroundColor: '#E2D9CC', borderRadius: 4, overflow: 'hidden' },
-  progressBarFill: { height: '100%', backgroundColor: '#163026', borderRadius: 4 },
+  progressBarFill: { height: '100%', backgroundColor: '#B8962E', borderRadius: 4 },
 
   // Calendar
   calGrid:     { flexDirection: 'row', flexWrap: 'wrap', marginTop: 16 },
