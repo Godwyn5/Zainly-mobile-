@@ -1,91 +1,92 @@
-import { useEffect, useRef, useCallback } from 'react';
-import { useAudioPlayer, useAudioPlayerStatus, setAudioModeAsync } from 'expo-audio';
+import { useEffect, useRef, useCallback, useState } from 'react';
+import { Audio } from 'expo-av';
 
-// ─── URL builder — identique web app ─────────────────────────────────────────
-// https://cdn.islamic.network/quran/audio/128/ar.alafasy/{globalNum}.mp3
-// globalNum = sum of verses in all preceding surahs + ayah id (1-based)
-
+// ─── URL builder ──────────────────────────────────────────────────────────────
 export function buildAudioUrl(globalNum: number): string {
   return `https://cdn.islamic.network/quran/audio/128/ar.alafasy/${globalNum}.mp3`;
 }
 
-// ─── Audio state ──────────────────────────────────────────────────────────────
-
+// ─── Types ────────────────────────────────────────────────────────────────────
 export type AyatAudioStatus = 'idle' | 'loading' | 'playing' | 'error';
-
-export type AyatAudioHook = {
-  status: AyatAudioStatus;
-  toggle: () => void;
-};
+export type AyatAudioHook = { status: AyatAudioStatus; toggle: () => void };
 
 // ─── One-time audio mode setup ────────────────────────────────────────────────
-// Called once at module level to configure iOS silent mode
 let audioModeSet = false;
-function ensureAudioMode() {
+async function ensureAudioMode() {
   if (audioModeSet) return;
   audioModeSet = true;
-  setAudioModeAsync({ playsInSilentMode: true }).catch(() => {});
+  await Audio.setAudioModeAsync({ playsInSilentModeIOS: true, staysActiveInBackground: false });
 }
 
 // ─── Hook ─────────────────────────────────────────────────────────────────────
-// Uses a single AudioPlayer instance with replace() on globalNum change.
-// useAudioPlayer manages lifecycle + disposal automatically on unmount.
 
-export function useAyatAudio(
-  globalNum: number,
-  onEnded?: () => void,
-): AyatAudioHook {
-  // Create a single player instance for the lifetime of this component.
-  // Pass null initially — we call replace() explicitly on first play.
-  const player = useAudioPlayer(null);
-  const status = useAudioPlayerStatus(player);
+export function useAyatAudio(globalNum: number, onEnded?: () => void): AyatAudioHook {
+  const [status, setStatus] = useState<AyatAudioStatus>('idle');
+  const soundRef  = useRef<Audio.Sound | null>(null);
+  const busyRef   = useRef(false); // prevents double-tap during load
 
-  // Track the last globalNum loaded into the player
-  const loadedGlobalNumRef = useRef<number | null>(null);
+  // ── Cleanup on unmount or globalNum change
+  const unload = useCallback(async () => {
+    const snd = soundRef.current;
+    if (!snd) return;
+    soundRef.current = null;
+    try { await snd.unloadAsync(); } catch {}
+  }, []);
 
-  // Track whether onEnded has already fired for the current play session
-  const endedFiredRef = useRef(false);
-
-  // ── Stop + reset when globalNum changes — identique web app useEffect[globalNum]
   useEffect(() => {
-    if (loadedGlobalNumRef.current !== null && loadedGlobalNumRef.current !== globalNum) {
-      player.pause();
-      loadedGlobalNumRef.current = null;
-      endedFiredRef.current = false;
-    }
-  }, [globalNum, player]);
+    return () => { unload(); };
+  }, [globalNum, unload]);
 
-  // ── Detect natural end of playback — identique web app a.onended → onListen()
-  useEffect(() => {
-    if (status.didJustFinish && !endedFiredRef.current) {
-      endedFiredRef.current = true;
-      onEnded?.();
-    }
-  }, [status.didJustFinish, onEnded]);
-
-  const toggle = useCallback(() => {
-    ensureAudioMode();
-
-    // ── Pause if playing — identique web app (if playing → pause)
-    if (status.playing) {
-      player.pause();
+  const toggle = useCallback(async () => {
+    // ── If playing → stop and unload (allows replay on next tap)
+    if (status === 'playing') {
+      console.log('[audio] stop →', globalNum);
+      setStatus('idle');
+      await unload();
       return;
     }
 
-    // ── Load source if not yet loaded for this globalNum
-    if (loadedGlobalNumRef.current !== globalNum) {
-      endedFiredRef.current = false;
-      player.replace(buildAudioUrl(globalNum));
-      loadedGlobalNumRef.current = globalNum;
+    // ── Prevent double-tap during load
+    if (busyRef.current) return;
+    busyRef.current = true;
+    setStatus('loading');
+
+    const url = buildAudioUrl(globalNum);
+    console.log('[audio] load →', url);
+
+    try {
+      await ensureAudioMode();
+      await unload(); // unload any previous sound first
+
+      const { sound } = await Audio.Sound.createAsync(
+        { uri: url },
+        { shouldPlay: true },
+        (playbackStatus) => {
+          if (!playbackStatus.isLoaded) return;
+          if (playbackStatus.isPlaying) {
+            setStatus('playing');
+            busyRef.current = false;
+          }
+          if (playbackStatus.didJustFinish) {
+            console.log('[audio] finished →', globalNum);
+            setStatus('idle');
+            soundRef.current = null;
+            sound.unloadAsync().catch(() => {});
+            onEnded?.();
+          }
+        },
+      );
+
+      soundRef.current = sound;
+      console.log('[audio] playing →', globalNum);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.log('[audio] ERROR →', globalNum, msg);
+      setStatus('idle');
+      busyRef.current = false;
+      await unload();
     }
+  }, [status, globalNum, onEnded, unload]);
 
-    player.play();
-  }, [player, status.playing, globalNum]);
-
-  // ── Map expo-audio status to our simplified AyatAudioStatus
-  let derived: AyatAudioStatus = 'idle';
-  if (status.playing)            derived = 'playing';
-  else if (status.isBuffering)   derived = 'loading';
-
-  return { status: derived, toggle };
+  return { status, toggle };
 }

@@ -43,8 +43,14 @@ export type TodayScreenData = {
   sessionDone: boolean;
   memorizationCard: MemorizationCard;
   revisions: RevisionItem[];
-  recoveryMode: boolean;        // true si inactif >= 5 jours — identique web app
-  daysSinceLastSession: number; // nombre exact de jours pour l'affichage
+  recoveryMode: boolean;
+  daysSinceLastSession: number;
+  totalMemorized: number;
+  sessionDates: string[];
+  ayahPerDay: number;
+  isPremium: boolean;
+  isSessionBlocked: boolean;
+  estMonths: number | null;
 };
 
 // ─── Hook ─────────────────────────────────────────────────────────────────────
@@ -69,10 +75,12 @@ export function useTodayData() {
         { data: planRows,     error: planErr  },
         { data: progressRows, error: progErr  },
         { data: reviewData,   error: revErr   },
+        { data: profileData },
       ] = await Promise.all([
-        supabase.from('plans').select('ayah_per_day, minutes_per_session').eq('user_id', authUser.id).order('created_at', { ascending: false }).limit(1),
-        supabase.from('progress').select('current_surah, current_ayah, streak, total_memorized, last_session_date').eq('user_id', authUser.id).order('created_at', { ascending: false }).limit(1),
+        supabase.from('plans').select('ayah_per_day, minutes_per_session, days_per_week').eq('user_id', authUser.id).order('created_at', { ascending: false }).limit(1),
+        supabase.from('progress').select('current_surah, current_ayah, streak, total_memorized, last_session_date, session_dates').eq('user_id', authUser.id).order('created_at', { ascending: false }).limit(1),
         supabase.from('review_items').select('id, surah_number, ayah, final_test_status, next_review').eq('user_id', authUser.id).eq('mastered', false).lte('next_review', today),
+        supabase.from('profiles').select('is_premium').eq('id', authUser.id).maybeSingle(),
       ]);
 
       if (planErr || progErr || revErr) {
@@ -99,8 +107,21 @@ export function useTodayData() {
       const ayatCount      = Math.max(0, memEnd - memStart + 1);
 
       // 4. Métriques streak / session
-      const streak      = (progress.streak as number) ?? 0;
-      const sessionDone = (progress.last_session_date as string) === today;
+      const streak         = (progress.streak as number) ?? 0;
+      const sessionDone    = (progress.last_session_date as string) === today;
+      const totalMemorized = (progress.total_memorized as number) ?? 0;
+      const sessionDates   = Array.isArray(progress.session_dates) ? (progress.session_dates as string[]) : [];
+      const isPremium      = profileData?.is_premium === true;
+      const sessionsCount  = sessionDates.length;
+      const isSessionBlocked = !isPremium && sessionsCount >= 5;
+
+      // Estimation mois restants — identique web app
+      const daysPerWeek = (plan.days_per_week as number) ?? 6;
+      const ayatLeft    = Math.max(0, 6236 - totalMemorized);
+      const estMonths: number | null = ayatLeft === 0 ? 0
+        : (ayahPerDay > 0 && daysPerWeek > 0)
+          ? Math.max(1, Math.ceil(Math.ceil(ayatLeft / ayahPerDay) / daysPerWeek / 4.33))
+          : null;
 
       // Recovery mode — identique web app dashboard.js lines 251-257
       // Condition : inactif >= 5 jours depuis la dernière session
@@ -167,6 +188,12 @@ export function useTodayData() {
           revisions,
           recoveryMode,
           daysSinceLastSession,
+          totalMemorized,
+          sessionDates,
+          ayahPerDay,
+          isPremium,
+          isSessionBlocked,
+          estMonths,
         },
       });
     } catch (err: unknown) {

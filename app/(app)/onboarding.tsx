@@ -8,6 +8,7 @@ import Animated, {
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { STORAGE_KEYS } from '@/lib/storageKeys';
+import { supabase } from '@/lib/supabase';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '@/constants/colors';
 import { Fonts, FontSizes } from '@/constants/typography';
@@ -84,6 +85,33 @@ export default function OnboardingScreen() {
 
   // ── PLAN ─────────────────────────────────────────────────────────────────────
   async function handleConfirmOnboarding() {
+    if (!plan) return;
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    console.log('[onboarding] saving plan for user:', user.id, '| ayah_per_day:', plan.ayahPerDay);
+
+    const minutesPerSession = plan.ayahPerDay * 2;
+
+    const [planRes, progressRes] = await Promise.all([
+      supabase.from('plans').upsert(
+        { user_id: user.id, ayah_per_day: plan.ayahPerDay, minutes_per_session: minutesPerSession },
+        { onConflict: 'user_id' }
+      ),
+      supabase.from('progress').upsert(
+        { user_id: user.id, current_surah: 1, current_ayah: 0, streak: 0, total_memorized: 0, last_session_date: null },
+        { onConflict: 'user_id' }
+      ),
+    ]);
+
+    if (planRes.error || progressRes.error) {
+      const msg = (planRes.error ?? progressRes.error)?.message ?? 'Erreur Supabase';
+      console.log('[onboarding] SAVE ERROR:', msg);
+      return;
+    }
+
+    console.log('[onboarding] plan saved OK');
     await AsyncStorage.setItem(STORAGE_KEYS.ONBOARDING_DONE, 'true');
     router.replace('/(app)/(tabs)/today');
   }

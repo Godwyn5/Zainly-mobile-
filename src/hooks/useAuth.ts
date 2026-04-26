@@ -7,12 +7,19 @@ export function useAuth() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
+    console.log('[useAuth] mount — calling getSession()');
+    supabase.auth.getSession().then(({ data, error }) => {
+      console.log('[useAuth] getSession resolved — session:', !!data.session, '| error:', error?.message ?? null);
       setSession(data.session);
+      console.log('[useAuth] setLoading(false)');
+      setLoading(false);
+    }).catch(err => {
+      console.log('[useAuth] getSession THREW:', err?.message ?? err);
       setLoading(false);
     });
 
     const { data: listener } = supabase.auth.onAuthStateChange((_event, newSession) => {
+      console.log('[useAuth] onAuthStateChange — event:', _event, '| session:', !!newSession);
       setSession(newSession);
     });
 

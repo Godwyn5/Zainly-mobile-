@@ -1,57 +1,34 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   View, Text, ScrollView, StyleSheet,
-  Pressable, ActivityIndicator, Linking, Alert,
+  Pressable, ActivityIndicator, Alert,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Colors } from '@/constants/colors';
 import { Fonts, FontSizes } from '@/constants/typography';
 import { useProfile } from '@/hooks/useProfile';
 import { useAuth } from '@/hooks/useAuth';
 
-const PREMIUM_URL  = 'https://zainly-alpha.vercel.app/premium';
-
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-function formatDate(iso: string | null): string {
-  if (!iso) return '—';
-  const d = new Date(iso);
-  return d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
-}
-
-function planLabel(type: string | null): string {
-  if (type === 'monthly') return 'Mensuel';
-  if (type === 'yearly')  return 'Annuel';
-  return '—';
-}
-
-function statusLabel(status: string | null): string {
-  if (status === 'active')   return 'Actif';
-  if (status === 'canceled') return 'Annulé (actif jusqu\'à la prochaine période)';
-  if (status === 'past_due') return 'Paiement en retard';
-  return '—';
-}
-
-function statusColor(status: string | null): string {
-  if (status === 'active')   return '#2E7D52';
-  if (status === 'canceled') return Colors.brand.gold;
-  if (status === 'past_due') return Colors.status.error;
-  return Colors.text.muted;
-}
-
-// ─── Row component ────────────────────────────────────────────────────────────
-
-function InfoRow({ label, value, valueColor }: { label: string; value: string; valueColor?: string }) {
+function Row({ label, value, valueColor }: { label: string; value: string; valueColor?: string }) {
   return (
-    <View style={rowStyles.row}>
-      <Text style={rowStyles.label}>{label}</Text>
-      <Text style={[rowStyles.value, valueColor ? { color: valueColor } : undefined]}>{value}</Text>
+    <View style={rStyles.row}>
+      <Text style={rStyles.label}>{label}</Text>
+      <Text style={[rStyles.value, valueColor ? { color: valueColor } : undefined]} numberOfLines={1}>
+        {value}
+      </Text>
     </View>
   );
 }
 
-const rowStyles = StyleSheet.create({
+function Divider() {
+  return <View style={rStyles.divider} />;
+}
+
+const rStyles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -60,16 +37,21 @@ const rowStyles = StyleSheet.create({
   },
   label: {
     fontFamily: Fonts.dmSans,
-    fontSize: FontSizes.base,
+    fontSize: 14,
     color: Colors.text.secondary,
   },
   value: {
     fontFamily: Fonts.dmSansMedium,
-    fontSize: FontSizes.base,
+    fontSize: 14,
+    fontWeight: '600',
     color: Colors.brand.dark,
     flexShrink: 1,
     textAlign: 'right',
-    maxWidth: '60%',
+    maxWidth: '58%',
+  },
+  divider: {
+    height: 1,
+    backgroundColor: '#F0EBE3',
   },
 });
 
@@ -80,14 +62,6 @@ export default function ProfileScreen() {
   const router          = useRouter();
   const { result, reload } = useProfile();
   const { signOut }     = useAuth();
-  const [actionLoading, setActionLoading] = useState(false);
-
-  async function handleManage() {
-    if (actionLoading) return;
-    setActionLoading(true);
-    try { await Linking.openURL(PREMIUM_URL); }
-    finally { setActionLoading(false); }
-  }
 
   async function handleSignOut() {
     Alert.alert(
@@ -133,97 +107,87 @@ export default function ProfileScreen() {
   return (
     <ScrollView
       style={styles.scroll}
-      contentContainerStyle={[
-        styles.content,
-        { paddingTop: insets.top + 24, paddingBottom: insets.bottom + 40 },
-      ]}
+      contentContainerStyle={{ paddingBottom: insets.bottom + 56 }}
       showsVerticalScrollIndicator={false}
     >
-      {/* ── HEADER ── */}
-      <View style={styles.header}>
-        <View style={styles.goldBar} />
-        <Text style={styles.title}>Profil</Text>
-        <Text style={styles.email}>{data.email}</Text>
-      </View>
+      {/* ── HEADER gradient ── */}
+      <LinearGradient
+        colors={['#0d1f17', '#163026', '#1e4535']}
+        start={{ x: 0, y: 0 }} end={{ x: 0.5, y: 1 }}
+        style={[styles.header, { paddingTop: insets.top + 40 }]}
+      >
+        <Text style={styles.bgCalligraphy}>الله</Text>
+        <Text style={styles.title}>Réglages</Text>
+        <Text style={styles.headerSub}>Compte et abonnement</Text>
+      </LinearGradient>
 
-      {/* ── STATUT ── */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Abonnement</Text>
+      <View style={styles.body}>
 
-        <View style={[styles.card, data.isPremium && styles.cardPremium]}>
-          {/* Badge statut */}
-          <View style={[styles.badge, data.isPremium ? styles.badgePremium : styles.badgeFree]}>
-            <Text style={[styles.badgeText, data.isPremium ? styles.badgeTextPremium : styles.badgeTextFree]}>
-              {data.isPremium ? 'PREMIUM' : 'GRATUIT'}
-            </Text>
+        {/* ── COMPTE ── */}
+        <View>
+          <Text style={styles.sectionLabel}>Compte</Text>
+          <View style={styles.card}>
+            <Row label="Email" value={data.email || '—'} />
+            <Divider />
+            <View style={{ paddingVertical: 8 }}>
+              <Pressable
+                onPress={handleSignOut}
+                style={({ pressed }) => [styles.signOutBtn, pressed && styles.btnPressed]}
+              >
+                <Text style={styles.signOutBtnText}>Déconnexion</Text>
+              </Pressable>
+            </View>
           </View>
-
-          {data.isPremium ? (
-            <>
-              <View style={styles.divider} />
-              <InfoRow label="Plan"           value={planLabel(data.planType)} />
-              <View style={styles.rowSep} />
-              <InfoRow
-                label="État"
-                value={statusLabel(data.subscriptionStatus)}
-                valueColor={statusColor(data.subscriptionStatus)}
-              />
-              <View style={styles.rowSep} />
-              <InfoRow label="Actif depuis"   value={formatDate(data.premiumSince)} />
-            </>
-          ) : (
-            <Text style={styles.freeDesc}>
-              5 sessions gratuites. Débloquez l'accès complet pour continuer votre mémorisation.
-            </Text>
-          )}
         </View>
-      </View>
 
-      {/* ── ACTIONS ── */}
-      <View style={styles.section}>
-        {data.isPremium ? (
-          <Pressable
-            onPress={handleManage}
-            disabled={actionLoading}
-            style={({ pressed }) => [styles.outlineBtn, (pressed || actionLoading) && styles.btnPressed]}
-          >
-            {actionLoading
-              ? <ActivityIndicator color={Colors.brand.dark} size="small" />
-              : <Text style={styles.outlineBtnText}>Voir mon abonnement →</Text>
-            }
-          </Pressable>
-        ) : (
-          <Pressable
-            onPress={() => router.push('/(app)/paywall')}
-            style={({ pressed }) => [styles.primaryBtn, pressed && styles.btnPressed]}
-          >
-            <Text style={styles.primaryBtnText}>Débloquer Zainly →</Text>
-          </Pressable>
-        )}
-      </View>
-
-      {/* ── COMPTE ── */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Compte</Text>
-        <View style={styles.card}>
-          <Pressable onPress={handleSignOut} style={styles.signOutRow}>
-            <Text style={styles.signOutText}>Se déconnecter</Text>
-          </Pressable>
+        {/* ── ABONNEMENT ── */}
+        <View>
+          <Text style={styles.sectionLabel}>Abonnement</Text>
+          <View style={[styles.card, data.isPremium && styles.cardPremium]}>
+            {data.isPremium ? (
+              <>
+                <Row label="Statut" value="Premium actif 👑" valueColor="#2E7D52" />
+                <Divider />
+                <Row label="Prix" value="2,99 € / mois" />
+                <Divider />
+                <Row label="Renouvellement" value="Mensuel automatique" />
+              </>
+            ) : (
+              <>
+                <Row label="Statut" value="Gratuit" />
+                <Divider />
+                <View style={{ paddingVertical: 12, gap: 12 }}>
+                  <Text style={styles.freeDesc}>
+                    Passe à Premium pour mémoriser sans limite, à ton rythme.
+                  </Text>
+                  <Pressable
+                    onPress={() => router.push('/(app)/paywall')}
+                    style={({ pressed }) => [styles.primaryBtn, pressed && styles.btnPressed]}
+                  >
+                    <Text style={styles.primaryBtnText}>Découvrir Premium →</Text>
+                  </Pressable>
+                </View>
+              </>
+            )}
+          </View>
         </View>
-      </View>
 
+        {/* ── FOOTER LÉGAL ── */}
+        <View style={styles.legalFooter}>
+          <Text style={styles.legalText}>Zainly · Mémorisation du Coran</Text>
+          <Text style={styles.legalText}>Baraka Allahou fikoum</Text>
+        </View>
+
+      </View>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
+  // Root
   scroll: {
     flex: 1,
     backgroundColor: Colors.ui.pageBg,
-  },
-  content: {
-    paddingHorizontal: 20,
-    gap: 0,
   },
 
   // Loading / error
@@ -256,140 +220,118 @@ const styles = StyleSheet.create({
 
   // Header
   header: {
-    alignItems: 'center',
-    marginBottom: 32,
+    paddingHorizontal: 24,
+    paddingBottom: 36,
+    overflow: 'hidden',
   },
-  goldBar: {
-    width: 32,
-    height: 2,
-    backgroundColor: Colors.brand.gold,
-    marginBottom: 14,
+  bgCalligraphy: {
+    position: 'absolute',
+    right: -10,
+    bottom: -10,
+    fontSize: 160,
+    color: 'rgba(255,255,255,0.04)',
+    lineHeight: 180,
+    pointerEvents: 'none',
   },
   title: {
     fontFamily: Fonts.playfair,
-    fontSize: FontSizes['2xl'],
-    fontWeight: '700',
-    color: Colors.brand.dark,
-    marginBottom: 6,
+    fontSize: 28,
+    fontWeight: '600',
+    color: '#fff',
+    marginBottom: 4,
+    lineHeight: 34,
   },
-  email: {
+  headerSub: {
     fontFamily: Fonts.dmSans,
-    fontSize: FontSizes.base,
-    color: Colors.text.secondary,
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.45)',
   },
 
-  // Section
-  section: {
-    marginBottom: 24,
+  // Body
+  body: {
+    paddingHorizontal: 16,
+    paddingTop: 24,
+    gap: 16,
   },
-  sectionTitle: {
+
+  // Section label
+  sectionLabel: {
     fontFamily: Fonts.dmSansBold,
-    fontSize: FontSizes.xs,
-    color: Colors.text.muted,
+    fontSize: 11,
+    fontWeight: '600',
+    letterSpacing: 1.5,
+    color: Colors.brand.gold,
     textTransform: 'uppercase',
-    letterSpacing: 1.2,
-    marginBottom: 10,
+    marginLeft: 4,
+    marginBottom: 8,
   },
 
   // Card
   card: {
-    backgroundColor: Colors.ui.cardBg,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: Colors.ui.border,
-    paddingHorizontal: 18,
-    paddingVertical: 18,
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    paddingHorizontal: 20,
+    shadowColor: '#0f2318',
+    shadowOpacity: 0.06,
+    shadowRadius: 24,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
   },
   cardPremium: {
-    borderColor: Colors.brand.gold,
     borderWidth: 1.5,
-  },
-
-  // Badge
-  badge: {
-    alignSelf: 'flex-start',
-    borderRadius: 20,
-    paddingHorizontal: 14,
-    paddingVertical: 5,
-    marginBottom: 4,
-  },
-  badgePremium: {
-    backgroundColor: 'rgba(184,150,46,0.12)',
-  },
-  badgeFree: {
-    backgroundColor: Colors.ui.pageBg,
-    borderWidth: 1,
-    borderColor: Colors.ui.border,
-  },
-  badgeText: {
-    fontFamily: Fonts.dmSansBold,
-    fontSize: FontSizes.xs,
-    letterSpacing: 1.5,
-  },
-  badgeTextPremium: { color: Colors.brand.gold },
-  badgeTextFree:    { color: Colors.text.muted },
-
-  divider: {
-    height: 1,
-    backgroundColor: Colors.ui.border,
-    marginVertical: 10,
-  },
-  rowSep: {
-    height: 1,
-    backgroundColor: Colors.ui.border,
-    marginLeft: 0,
+    borderColor: Colors.brand.gold,
   },
 
   freeDesc: {
     fontFamily: Fonts.dmSans,
-    fontSize: FontSizes.sm,
+    fontSize: 13,
     color: Colors.text.secondary,
-    lineHeight: FontSizes.sm * 1.7,
-    marginTop: 10,
+    lineHeight: 21,
   },
 
   // Buttons
   primaryBtn: {
     backgroundColor: Colors.brand.dark,
-    paddingVertical: 17,
-    borderRadius: 14,
+    paddingVertical: 14,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 56,
   },
   primaryBtnText: {
-    fontFamily: Fonts.playfair,
-    fontSize: FontSizes.md,
-    fontWeight: '700',
+    fontFamily: Fonts.dmSansBold,
+    fontSize: 14,
+    fontWeight: '600',
     color: '#fff',
   },
-  outlineBtn: {
-    borderWidth: 1.5,
-    borderColor: Colors.brand.dark,
-    paddingVertical: 17,
-    borderRadius: 14,
+  signOutBtn: {
+    width: '100%',
+    paddingVertical: 13,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 56,
+    borderWidth: 1,
+    borderColor: Colors.ui.border,
   },
-  outlineBtnText: {
-    fontFamily: Fonts.playfair,
-    fontSize: FontSizes.md,
-    fontWeight: '700',
+  signOutBtnText: {
+    fontFamily: Fonts.dmSans,
+    fontSize: 14,
+    fontWeight: '600',
     color: Colors.brand.dark,
   },
   btnPressed: {
-    opacity: 0.65,
+    opacity: 0.6,
   },
 
-  // Sign out
-  signOutRow: {
-    paddingVertical: 4,
+  // Legal footer
+  legalFooter: {
     alignItems: 'center',
+    gap: 4,
+    paddingTop: 8,
   },
-  signOutText: {
-    fontFamily: Fonts.dmSansMedium,
-    fontSize: FontSizes.base,
-    color: Colors.status.error,
+  legalText: {
+    fontFamily: Fonts.dmSans,
+    fontSize: 12,
+    color: Colors.text.muted,
+    textAlign: 'center',
   },
 });

@@ -28,6 +28,14 @@ export default function SessionScreen() {
   const insets  = useSafeAreaInsets();
   const { result } = useSessionLoader();
 
+  // ── Premium blocked — redirect to paywall, no flash ──────────────────────
+  // useEffect must be before all conditional returns (Rules of Hooks)
+  React.useEffect(() => {
+    if (result.status === 'premium_blocked') {
+      router.replace('/(app)/paywall');
+    }
+  }, [result.status, router]);
+
   // ── Loading ────────────────────────────────────────────────────────────────
   if (result.status === 'loading') {
     return (
@@ -51,14 +59,6 @@ export default function SessionScreen() {
       </View>
     );
   }
-
-  // ── Premium blocked — redirect to paywall, no flash ──────────────────────
-  // useEffect avoids "Cannot update during render" warning from expo-router
-  React.useEffect(() => {
-    if (result.status === 'premium_blocked') {
-      router.replace('/(app)/paywall');
-    }
-  }, [result.status, router]);
 
   if (result.status === 'premium_blocked') {
     return <View style={styles.center} />;
